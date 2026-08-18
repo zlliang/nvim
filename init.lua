@@ -244,6 +244,18 @@ vim.lsp.config('vtsls', {
   end,
 })
 
+vim.api.nvim_create_autocmd('LspAttach', {
+  callback = function(args)
+    local function map(lhs, rhs, desc)
+      vim.keymap.set('n', lhs, rhs, { buffer = args.buf, desc = desc })
+    end
+
+    map('gd', vim.lsp.buf.definition, 'Go to definition')
+    map('gr', vim.lsp.buf.references, 'Find references')
+    map('K', vim.lsp.buf.hover, 'Show documentation')
+  end,
+})
+
 -- ====================================================================
 -- Telescope
 -- ====================================================================
