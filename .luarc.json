@@ -1,5 +1,9 @@
 {
   "runtime.version": "LuaJIT",
-  "workspace.library": ["${env:VIMRUNTIME}"],
+  "workspace.library": [
+    "${env:VIMRUNTIME}",
+    "${3rd}/luv/library",
+    "${env:HOME}/.local/share/nvim/site/pack/core/opt"
+  ],
   "workspace.checkThirdParty": false
 }

@@ -22,7 +22,6 @@ vim.o.scrolloff = 0
 vim.o.confirm = true
 
 vim.o.mouse = ''
-vim.o.mousescroll = 'ver:0,hor:0'
 
 -- Sync clipboard between OS and Neovim.
 vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
@@ -31,11 +30,28 @@ vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
 -- Helpers
 -- ====================================================================
 
---- Because most plugins are hosted on GitHub, we can use the helper
---- function to have less repetition in the following sections.
---- @param repo string
---- @return string
+--- Expands `owner/repo` into a clone URL, as most plugins live on GitHub.
+---@param repo string
+---@return string
 local function gh(repo) return 'https://github.com/' .. repo end
+
+--- Builds a plugin's native library on install and update, and right away when
+--- it is missing, since `vim.pack` only reports changes it makes itself.
+---@param name string Plugin directory name.
+---@param spec { is_built: fun(path: string): boolean, build: fun(path: string) }
+local function ensure_built(name, spec)
+  vim.api.nvim_create_autocmd('PackChanged', {
+    callback = function(args)
+      local data = args.data
+      if data.spec.name == name and (data.kind == 'install' or data.kind == 'update') then
+        spec.build(data.path)
+      end
+    end,
+  })
+
+  local path = vim.pack.get({ name })[1].path
+  if not spec.is_built(path) then spec.build(path) end
+end
 
 -- ====================================================================
 -- Common dependencies
@@ -64,16 +80,16 @@ vim.pack.add {
   gh 'projekt0n/github-nvim-theme',
 }
 
--- Neovim detects the terminal background via OSC 11, so this follows
--- macOS appearance.
+--- Neovim detects the terminal background via OSC 11, so this follows the
+--- macOS appearance.
 local function apply_theme()
   local theme = vim.o.background == 'light' and 'github_light_default' or 'github_dark_default'
   if vim.g.colors_name ~= theme then vim.cmd.colorscheme(theme) end
 end
 
--- The terminal's OSC 11 reply can land late, and OptionSet is
--- suppressed during startup. Defer until the background change finishes;
--- otherwise, it immediately clears the newly applied color scheme.
+--- The OSC 11 reply can land late, and OptionSet is suppressed during startup.
+--- Defer until the background change finishes, or it immediately clears the
+--- color scheme just applied.
 local function schedule_theme() vim.schedule(apply_theme) end
 
 apply_theme()
@@ -99,7 +115,7 @@ require('lualine').setup {
     component_separators = '',
   },
   sections = {
-    lualine_x = {'encoding', 'filetype'},
+    lualine_x = { 'encoding', 'filetype' },
   },
 }
 
@@ -125,7 +141,7 @@ vim.pack.add {
 
 local ts = require('nvim-treesitter')
 
-ts.install({
+ts.install {
   'javascript',
   'jsx',
   'typescript',
@@ -134,7 +150,7 @@ ts.install({
   'python',
   'lua',
   'rust',
-})
+}
 
 vim.api.nvim_create_autocmd('FileType', {
   callback = function(args)
@@ -157,7 +173,13 @@ vim.pack.add {
 
 local cmp = require('blink.cmp')
 
-cmp.build():pwait()
+-- The Rust fuzzy matcher is optional, so build it in the background and let
+-- blink.cmp use its Lua implementation until the library is ready.
+ensure_built('blink.cmp', {
+  is_built = function() return cmp.library_available() end,
+  build = function() cmp.build() end,
+})
+
 cmp.setup {
   completion = {
     menu = { scrolloff = 0 },
@@ -177,13 +199,48 @@ vim.pack.add {
 require('mason').setup()
 require('mason-lspconfig').setup {
   ensure_installed = {
+    'tsc',
     'vtsls',
+    'astro',
     'basedpyright',
     'ruff',
     'lua_ls',
     'rust_analyzer',
   },
 }
+
+--- Whether the project uses TypeScript 7 or newer.
+---
+--- TypeScript 7 ships a native language server (`tsc --lsp`); earlier versions
+--- need `vtsls`.
+---@param root string
+---@return boolean
+local function is_ts7(root)
+  local ok, version = pcall(function()
+    local path = vim.fs.joinpath(root, 'node_modules/typescript/package.json')
+    local pkg = vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
+    return assert(vim.version.parse(pkg.version))
+  end)
+  return ok and version.major >= 7
+end
+
+local tsc_root_dir = vim.lsp.config.tsc.root_dir
+vim.lsp.config('tsc', {
+  root_dir = function(bufnr, on_dir)
+    tsc_root_dir(bufnr, function(root)
+      if is_ts7(root) then on_dir(root) end
+    end)
+  end,
+})
+
+local vtsls_root_dir = vim.lsp.config.vtsls.root_dir
+vim.lsp.config('vtsls', {
+  root_dir = function(bufnr, on_dir)
+    vtsls_root_dir(bufnr, function(root)
+      if not is_ts7(root) then on_dir(root) end
+    end)
+  end,
+})
 
 -- ====================================================================
 -- Telescope
@@ -194,33 +251,20 @@ vim.pack.add {
   gh 'nvim-telescope/telescope-fzf-native.nvim',
 }
 
--- fzf-native is a C implementation of the fzf algorithm, so it does not
--- require the fzf executable. Build its shared library after installation
--- and updates instead.
-local fzf_native_name = 'telescope-fzf-native.nvim'
-
-local function build_fzf_native(path)
-  local result = vim.system({ 'make' }, { cwd = path }):wait()
-  if result.code ~= 0 then
-    error(('failed to build %s: %s'):format(fzf_native_name, result.stderr))
-  end
-end
-
-vim.api.nvim_create_autocmd('PackChanged', {
-  callback = function(args)
-    local data = args.data
-    local name = data.spec.name
-    local kind = data.kind
-    if name == fzf_native_name and (kind == 'install' or kind == 'update') then
-      build_fzf_native(data.path)
+-- fzf-native is a C port of the fzf algorithm, so no fzf executable is needed.
+-- Telescope cannot load the extension without the library, hence the blocking
+-- build.
+ensure_built('telescope-fzf-native.nvim', {
+  is_built = function(path)
+    return vim.uv.fs_stat(vim.fs.joinpath(path, 'build/libfzf.so')) ~= nil
+  end,
+  build = function(path)
+    local result = vim.system({ 'make' }, { cwd = path }):wait()
+    if result.code ~= 0 then
+      error('failed to build telescope-fzf-native.nvim: ' .. result.stderr)
     end
   end,
 })
-
-local fzf_native = vim.pack.get({ fzf_native_name })[1]
-if vim.fn.filereadable(fzf_native.path .. '/build/libfzf.so') == 0 then
-  build_fzf_native(fzf_native.path)
-end
 
 local telescope = require('telescope')
 local actions = require('telescope.actions')
