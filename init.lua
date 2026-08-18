@@ -123,6 +123,50 @@ require('lualine').setup {
 }
 
 -- ====================================================================
+-- Telescope
+-- ====================================================================
+
+vim.pack.add {
+  gh 'nvim-telescope/telescope.nvim',
+  gh 'nvim-telescope/telescope-fzf-native.nvim',
+}
+
+-- fzf-native is a C port of the fzf algorithm, so no fzf executable is needed.
+-- Telescope cannot load the extension without the library, hence the blocking
+-- build.
+ensure_built('telescope-fzf-native.nvim', function(path)
+  if vim.uv.fs_stat(vim.fs.joinpath(path, 'build/libfzf.so')) then return end
+
+  local result = vim.system({ 'make' }, { cwd = path }):wait()
+  if result.code ~= 0 then
+    error('failed to build telescope-fzf-native.nvim: ' .. result.stderr)
+  end
+end)
+
+local telescope = require('telescope')
+local actions = require('telescope.actions')
+
+telescope.setup {
+  defaults = {
+    mappings = {
+      i = {
+        ['<Esc>'] = actions.close,
+      },
+    },
+    scroll_strategy = 'limit',
+  },
+}
+
+telescope.load_extension('fzf')
+
+local builtin = require('telescope.builtin')
+
+vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Find files' })
+vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Live grep' })
+vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Find buffers' })
+vim.keymap.set('n', '<leader>fh', builtin.help_tags, { desc = 'Help tags' })
+
+-- ====================================================================
 -- Which-key
 -- ====================================================================
 
@@ -183,9 +227,15 @@ ensure_built('blink.cmp', function()
 end)
 
 cmp.setup {
+  keymap = { preset = 'super-tab' },
   completion = {
     menu = { scrolloff = 0 },
+    documentation = {
+      auto_show = true,
+      auto_show_delay_ms = 300,
+    },
   },
+  signature = { enabled = true },
 }
 
 -- ====================================================================
@@ -250,55 +300,11 @@ vim.api.nvim_create_autocmd('LspAttach', {
       vim.keymap.set('n', lhs, rhs, { buffer = args.buf, desc = desc })
     end
 
-    map('gd', vim.lsp.buf.definition, 'Go to definition')
-    map('gr', vim.lsp.buf.references, 'Find references')
-    map('K', vim.lsp.buf.hover, 'Show documentation')
+    map('K', vim.lsp.buf.hover, 'Show hover documentation')
+    map('gd', builtin.lsp_definitions, 'Go to definition')
+    map('grr', builtin.lsp_references, 'Find references')
   end,
 })
-
--- ====================================================================
--- Telescope
--- ====================================================================
-
-vim.pack.add {
-  gh 'nvim-telescope/telescope.nvim',
-  gh 'nvim-telescope/telescope-fzf-native.nvim',
-}
-
--- fzf-native is a C port of the fzf algorithm, so no fzf executable is needed.
--- Telescope cannot load the extension without the library, hence the blocking
--- build.
-ensure_built('telescope-fzf-native.nvim', function(path)
-  if vim.uv.fs_stat(vim.fs.joinpath(path, 'build/libfzf.so')) then return end
-
-  local result = vim.system({ 'make' }, { cwd = path }):wait()
-  if result.code ~= 0 then
-    error('failed to build telescope-fzf-native.nvim: ' .. result.stderr)
-  end
-end)
-
-local telescope = require('telescope')
-local actions = require('telescope.actions')
-
-telescope.setup {
-  defaults = {
-    mappings = {
-      i = {
-        ['<Esc>'] = actions.close,
-      },
-    },
-    scroll_strategy = 'limit',
-  },
-}
-
-telescope.load_extension('fzf')
-
-local builtin = require('telescope.builtin')
-
-vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Find files' })
-vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Live grep' })
-vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Find buffers' })
-vim.keymap.set('n', '<leader>fh', builtin.help_tags, { desc = 'Help tags' })
 
 -- ====================================================================
 -- Git
