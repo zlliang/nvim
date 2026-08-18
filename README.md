@@ -1,3 +1,3 @@
 # Neovim
 
-My Neovim (0.12+) configuration.
+My [Neovim](https://neovim.io/) (0.12+) configuration.
