@@ -66,10 +66,13 @@ vim.pack.add {
 -- ====================================================================
 
 vim.pack.add {
-  gh 'rcarriga/nvim-notify',
+  gh 'nvim-mini/mini.notify',
 }
 
-vim.notify = require('notify')
+local notify = require('mini.notify')
+
+notify.setup()
+vim.notify = require('mini.notify').make_notify()
 
 -- ====================================================================
 -- Theme
