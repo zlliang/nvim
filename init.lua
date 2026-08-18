@@ -35,22 +35,21 @@ vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
 ---@return string
 local function gh(repo) return 'https://github.com/' .. repo end
 
---- Builds a plugin's native library on install and update, and right away when
---- it is missing, since `vim.pack` only reports changes it makes itself.
+--- Ensures a plugin's native library is built after install/update and at startup.
 ---@param name string Plugin directory name.
----@param spec { is_built: fun(path: string): boolean, build: fun(path: string) }
-local function ensure_built(name, spec)
+---@param build fun(path: string) Build the library if needed.
+local function ensure_built(name, build)
   vim.api.nvim_create_autocmd('PackChanged', {
     callback = function(args)
       local data = args.data
       if data.spec.name == name and (data.kind == 'install' or data.kind == 'update') then
-        spec.build(data.path)
+        build(data.path)
       end
     end,
   })
 
   local path = vim.pack.get({ name })[1].path
-  if not spec.is_built(path) then spec.build(path) end
+  build(path)
 end
 
 -- ====================================================================
@@ -109,6 +108,7 @@ vim.o.cmdheight = 0
 vim.o.laststatus = 3
 vim.o.showmode = false
 
+---@diagnostic disable-next-line: undefined-field
 require('lualine').setup {
   options = {
     section_separators = '',
@@ -175,10 +175,9 @@ local cmp = require('blink.cmp')
 
 -- The Rust fuzzy matcher is optional, so build it in the background and let
 -- blink.cmp use its Lua implementation until the library is ready.
-ensure_built('blink.cmp', {
-  is_built = function() return cmp.library_available() end,
-  build = function() cmp.build() end,
-})
+ensure_built('blink.cmp', function()
+  if not cmp.library_available() then cmp.build() end
+end)
 
 cmp.setup {
   completion = {
@@ -224,7 +223,7 @@ local function is_ts7(root)
   return ok and version.major >= 7
 end
 
-local tsc_root_dir = vim.lsp.config.tsc.root_dir
+local tsc_root_dir = assert(vim.lsp.config.tsc.root_dir)
 vim.lsp.config('tsc', {
   root_dir = function(bufnr, on_dir)
     tsc_root_dir(bufnr, function(root)
@@ -233,7 +232,7 @@ vim.lsp.config('tsc', {
   end,
 })
 
-local vtsls_root_dir = vim.lsp.config.vtsls.root_dir
+local vtsls_root_dir = assert(vim.lsp.config.vtsls.root_dir)
 vim.lsp.config('vtsls', {
   root_dir = function(bufnr, on_dir)
     vtsls_root_dir(bufnr, function(root)
@@ -254,17 +253,14 @@ vim.pack.add {
 -- fzf-native is a C port of the fzf algorithm, so no fzf executable is needed.
 -- Telescope cannot load the extension without the library, hence the blocking
 -- build.
-ensure_built('telescope-fzf-native.nvim', {
-  is_built = function(path)
-    return vim.uv.fs_stat(vim.fs.joinpath(path, 'build/libfzf.so')) ~= nil
-  end,
-  build = function(path)
-    local result = vim.system({ 'make' }, { cwd = path }):wait()
-    if result.code ~= 0 then
-      error('failed to build telescope-fzf-native.nvim: ' .. result.stderr)
-    end
-  end,
-})
+ensure_built('telescope-fzf-native.nvim', function(path)
+  if vim.uv.fs_stat(vim.fs.joinpath(path, 'build/libfzf.so')) then return end
+
+  local result = vim.system({ 'make' }, { cwd = path }):wait()
+  if result.code ~= 0 then
+    error('failed to build telescope-fzf-native.nvim: ' .. result.stderr)
+  end
+end)
 
 local telescope = require('telescope')
 local actions = require('telescope.actions')
