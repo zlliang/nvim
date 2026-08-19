@@ -10,21 +10,51 @@ vim.g.maplocalleader = ' '
 vim.o.number = true
 vim.o.signcolumn = 'yes'
 
-vim.o.splitbelow = true
-vim.o.splitright = true
+vim.o.expandtab = true
+vim.o.tabstop = 2
+vim.o.shiftwidth = 2
+vim.o.softtabstop = -1
+vim.o.shiftround = true
 
 vim.o.list = true
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+vim.o.ignorecase = true
+vim.o.smartcase = true
 vim.o.inccommand = 'split'
+
 vim.o.cursorline = true
 vim.o.scrolloff = 0
 vim.o.confirm = true
+vim.o.undofile = true
+
+vim.o.splitbelow = true
+vim.o.splitright = true
 
 vim.o.mouse = ''
 
+-- Keep code on one line; prose file types use wrapping.
+vim.o.breakindent = true
+vim.o.wrap = false
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'markdown', 'text' },
+  callback = function() vim.opt_local.wrap = true end,
+})
+
+-- Telescope handles directory buffers, so disable netrw globally.
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- Sync clipboard between OS and Neovim.
 vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
+
+-- Highlight when yanking (copying) text.
+vim.api.nvim_create_autocmd('TextYankPost', {
+  callback = function() vim.hl.on_yank() end,
+})
+
+-- General keymaps.
+vim.keymap.set('n', '<Esc>', '<Cmd>nohlsearch<CR>', { desc = 'Clear search highlights' })
 
 -- ====================================================================
 -- Helpers
@@ -166,6 +196,25 @@ vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Live grep' })
 vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Find buffers' })
 vim.keymap.set('n', '<leader>fh', builtin.help_tags, { desc = 'Help tags' })
 
+-- Open Telescope when Neovim starts with a directory argument instead of netrw.
+vim.api.nvim_create_autocmd('VimEnter', {
+  callback = function()
+    local dir = vim.api.nvim_buf_get_name(0)
+    if dir == '' or vim.fn.isdirectory(dir) ~= 1 then return end
+
+    -- Make the directory passed on the command line Neovim's global cwd.
+    vim.fn.chdir(dir)
+
+    local buf = vim.api.nvim_get_current_buf()
+    vim.schedule(function()
+      if vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_buf_delete(buf, { force = true })
+      end
+      builtin.find_files { cwd = dir }
+    end)
+  end,
+})
+
 -- ====================================================================
 -- Which-key
 -- ====================================================================
@@ -187,25 +236,29 @@ vim.pack.add {
 }
 
 local ts = require('nvim-treesitter')
+local available_parsers = ts.get_available()
 
-ts.install {
-  'javascript',
-  'jsx',
-  'typescript',
-  'tsx',
-  'json',
-  'python',
-  'lua',
-  'rust',
-}
+--- Starts Tree-sitter highlighting.
+---@param buf integer Buffer handle.
+---@param lang string Tree-sitter language name.
+local function start_ts(buf, lang)
+  if vim.api.nvim_buf_is_valid(buf) and vim.treesitter.language.add(lang) then
+    vim.treesitter.start(buf, lang)
+  end
+end
 
 vim.api.nvim_create_autocmd('FileType', {
   callback = function(args)
     local lang = vim.treesitter.language.get_lang(args.match)
+    if not lang then return end
 
-    if lang and vim.list_contains(ts.get_installed(), lang) then
-      vim.treesitter.start(args.buf, lang)
+    local installed = vim.list_contains(ts.get_installed('parsers'), lang)
+    if not installed and vim.list_contains(available_parsers, lang) then
+      ts.install(lang):await(function() start_ts(args.buf, lang) end)
+      return
     end
+
+    start_ts(args.buf, lang)
   end,
 })
 
@@ -273,7 +326,7 @@ local function is_ts7(root)
     local pkg = vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
     return assert(vim.version.parse(pkg.version))
   end)
-  return ok and version.major >= 7
+  return version.major >= 7 or not ok
 end
 
 local tsc_root_dir = assert(vim.lsp.config.tsc.root_dir)
@@ -315,3 +368,15 @@ vim.pack.add {
 }
 
 require('gitsigns').setup()
+
+-- ====================================================================
+-- Pairs and tags
+-- ====================================================================
+
+vim.pack.add {
+  gh 'windwp/nvim-autopairs',
+  gh 'windwp/nvim-ts-autotag',
+}
+
+require('nvim-autopairs').setup()
+require('nvim-ts-autotag').setup()
