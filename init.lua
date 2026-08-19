@@ -101,8 +101,18 @@ vim.pack.add {
 
 local notify = require('mini.notify')
 
-notify.setup()
-vim.notify = require('mini.notify').make_notify()
+notify.setup {
+  content = {
+    format = function(notification) return notification.msg end,
+  },
+  window = {
+    config = {
+      title = '',
+    },
+  },
+}
+
+vim.notify = notify.make_notify()
 
 -- ====================================================================
 -- Theme
@@ -191,6 +201,7 @@ telescope.load_extension('fzf')
 
 local builtin = require('telescope.builtin')
 
+vim.keymap.set('n', '<leader>ft', '<Cmd>Telescope<CR>', { desc = 'Open Telescope' })
 vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Find files' })
 vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Live grep' })
 vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Find buffers' })
