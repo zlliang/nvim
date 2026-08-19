@@ -53,8 +53,30 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function() vim.hl.on_yank() end,
 })
 
+-- Enter terminal mode immediately when opening a terminal buffer, and keep the
+-- terminal cursor from blinking.
+vim.opt.guicursor:append('t:blinkon0')
+vim.api.nvim_create_autocmd({ 'TermOpen', 'BufEnter' }, {
+  callback = function ()
+    if vim.bo.buftype == 'terminal' then vim.cmd.startinsert() end
+  end
+})
+
 -- General keymaps.
 vim.keymap.set('n', '<Esc>', '<Cmd>nohlsearch<CR>', { desc = 'Clear search highlights' })
+vim.keymap.set('n', '<C-h>', '<C-w>h', { desc = 'Focus left window' })
+vim.keymap.set('n', '<C-j>', '<C-w>j', { desc = 'Focus lower window' })
+vim.keymap.set('n', '<C-k>', '<C-w>k', { desc = 'Focus upper window' })
+vim.keymap.set('n', '<C-l>', '<C-w>l', { desc = 'Focus right window' })
+vim.keymap.set('n', '<leader>sh', '<Cmd>split<CR>', { desc = 'Split window horizontally' })
+vim.keymap.set('n', '<leader>sv', '<Cmd>vsplit<CR>', { desc = 'Split window vertically' })
+vim.keymap.set('n', '[b', '<Cmd>bprevious<CR>', { desc = 'Previous buffer' })
+vim.keymap.set('n', ']b', '<Cmd>bnext<CR>', { desc = 'Next buffer' })
+vim.keymap.set('n', '<leader>bd', '<Cmd>bdelete<CR>', { desc = 'Delete buffer' })
+vim.keymap.set('n', '<leader>th', '<Cmd>split | resize 15 | terminal<CR>', { desc = 'Open terminal in horizontal split' })
+vim.keymap.set('n', '<leader>tv', '<Cmd>vsplit | terminal<CR>', { desc = 'Open terminal in vertical split' })
+vim.keymap.set('n', '<leader>tf', '<Cmd>terminal<CR>', { desc = 'Open terminal in current window' })
+vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- ====================================================================
 -- Helpers
