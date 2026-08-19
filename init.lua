@@ -326,7 +326,7 @@ local function is_ts7(root)
     local pkg = vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
     return assert(vim.version.parse(pkg.version))
   end)
-  return version.major >= 7 or not ok
+  return not ok or version.major >= 7
 end
 
 local tsc_root_dir = assert(vim.lsp.config.tsc.root_dir)
