@@ -31,7 +31,7 @@ vim.o.undofile = true
 vim.o.splitbelow = true
 vim.o.splitright = true
 
-vim.o.mouse = ''
+vim.o.mouse = 'a'
 
 -- Keep code on one line; prose file types use wrapping.
 vim.o.breakindent = true
@@ -53,16 +53,18 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function() vim.hl.on_yank() end,
 })
 
--- Enter terminal mode immediately when opening a terminal buffer, and keep the
--- terminal cursor from blinking.
+-- Configure terminal buffer behavior.
 vim.opt.guicursor:append('t:blinkon0')
-vim.api.nvim_create_autocmd({ 'TermOpen', 'BufEnter' }, {
-  callback = function ()
+vim.api.nvim_create_autocmd('TermOpen', {
+  callback = function()
     if vim.bo.buftype == 'terminal' then vim.cmd.startinsert() end
-  end
+  end,
 })
 
--- General keymaps.
+-- ====================================================================
+-- General keymaps
+-- ====================================================================
+
 vim.keymap.set('n', '<Esc>', '<Cmd>nohlsearch<CR>', { desc = 'Clear search highlights' })
 vim.keymap.set('n', '<C-h>', '<C-w>h', { desc = 'Focus left window' })
 vim.keymap.set('n', '<C-j>', '<C-w>j', { desc = 'Focus lower window' })
@@ -128,9 +130,8 @@ notify.setup {
     format = function(notification) return notification.msg end,
   },
   window = {
-    config = {
-      title = '',
-    },
+    config = { title = '' },
+    winblend = 0,
   },
 }
 
@@ -223,6 +224,7 @@ telescope.load_extension('fzf')
 
 local builtin = require('telescope.builtin')
 
+vim.keymap.set('n', '<leader>/', builtin.current_buffer_fuzzy_find, { desc = 'Fuzzy find in current buffer' })
 vim.keymap.set('n', '<leader>ft', '<Cmd>Telescope<CR>', { desc = 'Open Telescope' })
 vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Find files' })
 vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Live grep' })
