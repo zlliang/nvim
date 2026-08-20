@@ -92,12 +92,12 @@ vim.keymap.set('n', '<leader>bd', '<Cmd>bdelete<CR>', { desc = 'Delete buffer' }
 -- Helpers
 -- ====================================================================
 
---- Expands `owner/repo` into a clone URL, as most plugins live on GitHub.
+---Expands `owner/repo` into a clone URL, as most plugins live on GitHub.
 ---@param repo string
 ---@return string
 local function gh(repo) return 'https://github.com/' .. repo end
 
---- Ensures a plugin's native library is built after install/update and at startup.
+---Ensures a plugin's native library is built after install/update and at startup.
 ---@param name string Plugin directory name.
 ---@param build fun(path: string) Build the library if needed.
 local function ensure_built(name, build)
@@ -153,16 +153,16 @@ vim.pack.add {
   gh 'projekt0n/github-nvim-theme',
 }
 
---- Neovim detects the terminal background via OSC 11, so this follows the
---- macOS appearance.
+---Neovim detects the terminal background via OSC 11, so this follows the
+---macOS appearance.
 local function apply_theme()
   local theme = vim.o.background == 'light' and 'github_light_default' or 'github_dark_default'
   if vim.g.colors_name ~= theme then vim.cmd.colorscheme(theme) end
 end
 
---- The OSC 11 reply can land late, and OptionSet is suppressed during startup.
---- Defer until the background change finishes, or it immediately clears the
---- color scheme just applied.
+---The OSC 11 reply can land late, and OptionSet is suppressed during startup.
+---Defer until the background change finishes, or it immediately clears the
+---color scheme just applied.
 local function schedule_theme() vim.schedule(apply_theme) end
 
 apply_theme()
@@ -224,7 +224,6 @@ telescope.setup {
         ['<Esc>'] = actions.close,
       },
     },
-    scroll_strategy = 'limit',
   },
 }
 
@@ -281,7 +280,7 @@ vim.pack.add {
 local ts = require('nvim-treesitter')
 local available_parsers = ts.get_available()
 
---- Starts Tree-sitter highlighting.
+---Starts Tree-sitter highlighting.
 ---@param buf integer Buffer handle.
 ---@param lang string Tree-sitter language name.
 local function start_ts(buf, lang)
@@ -357,10 +356,10 @@ require('mason-lspconfig').setup {
   },
 }
 
---- Whether the project uses TypeScript 7 or newer.
+---Whether the project uses TypeScript 7 or newer.
 ---
---- TypeScript 7 ships a native language server (`tsc --lsp`); earlier versions
---- need `vtsls`.
+---TypeScript 7 ships a native language server (`tsc --lsp`); earlier versions
+---need `vtsls`.
 ---@param root string
 ---@return boolean
 local function is_ts7(root)
