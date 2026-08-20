@@ -137,6 +137,9 @@ notify.setup {
   content = {
     format = function(notification) return notification.msg end,
   },
+  lsp_progress = {
+    enable = false,
+  },
   window = {
     config = { title = '' },
     winblend = 0,
@@ -355,6 +358,8 @@ conform.setup {
   },
 }
 
+conform.formatters_by_ft['*'] = { 'trim_whitespace', 'trim_newlines' }
+
 ---Installs missing Mason packages.
 ---@param names string[] Mason package names.
 local function ensure_installed(names)
@@ -434,6 +439,7 @@ ensure_installed {
 }
 
 conform.formatters_by_ft.lua = { 'stylua' }
+conform.formatters.stylua = { require_cwd = true }
 
 -- Rust
 
