@@ -31,8 +31,6 @@ vim.o.undofile = true
 vim.o.splitbelow = true
 vim.o.splitright = true
 
-vim.o.mouse = 'a'
-
 -- Keep code on one line; prose file types use wrapping.
 vim.o.breakindent = true
 vim.o.wrap = false
@@ -55,6 +53,17 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 
 -- Disable cursor blinking for terminal mode.
 vim.opt.guicursor:append('t:blinkon0')
+
+-- Enter Terminal mode when opening a terminal.
+vim.api.nvim_create_autocmd('TermOpen', {
+  callback = function() vim.cmd.startinsert() end,
+})
+
+-- ====================================================================
+-- Mouse
+-- ====================================================================
+
+require('mouse').setup()
 
 -- ====================================================================
 -- General keymaps
