@@ -71,11 +71,6 @@ require('mouse').setup()
 
 vim.keymap.set('n', '<Esc>', '<Cmd>nohlsearch<CR>', { desc = 'Clear search highlights' })
 
-vim.keymap.set('n', '<C-h>', '<C-w>h', { desc = 'Focus left window' })
-vim.keymap.set('n', '<C-j>', '<C-w>j', { desc = 'Focus lower window' })
-vim.keymap.set('n', '<C-k>', '<C-w>k', { desc = 'Focus upper window' })
-vim.keymap.set('n', '<C-l>', '<C-w>l', { desc = 'Focus right window' })
-
 vim.keymap.set('n', '<leader>sh', '<Cmd>split<CR>', { desc = 'Split window horizontally' })
 vim.keymap.set('n', '<leader>sv', '<Cmd>vsplit<CR>', { desc = 'Split window vertically' })
 
@@ -121,6 +116,7 @@ end
 vim.pack.add {
   gh 'nvim-lua/plenary.nvim',
   gh 'nvim-tree/nvim-web-devicons',
+  gh 'christoomey/vim-tmux-navigator',
 }
 
 -- ====================================================================
