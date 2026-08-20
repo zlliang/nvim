@@ -334,26 +334,51 @@ cmp.setup {
 }
 
 -- ====================================================================
--- LSP
+-- LSP, linters, and formatters
 -- ====================================================================
 
 vim.pack.add {
   gh 'neovim/nvim-lspconfig',
   gh 'mason-org/mason.nvim',
   gh 'mason-org/mason-lspconfig.nvim',
+  gh 'stevearc/conform.nvim',
 }
 
 require('mason').setup()
-require('mason-lspconfig').setup {
-  ensure_installed = {
-    'tsc',
-    'vtsls',
-    'astro',
-    'basedpyright',
-    'ruff',
-    'lua_ls',
-    'rust_analyzer',
+require('mason-lspconfig').setup()
+
+local conform = require('conform')
+
+conform.setup {
+  format_on_save = {
+    timeout_ms = 500,
   },
+}
+
+---Installs missing Mason packages.
+---@param names string[] Mason package names.
+local function ensure_installed(names)
+  local registry = require('mason-registry')
+  registry.refresh(function(success)
+    if not success then
+      vim.notify('Failed to refresh Mason registry', vim.log.levels.ERROR)
+      return
+    end
+
+    for _, name in ipairs(names) do
+      local pkg = registry.get_package(name)
+      if not pkg:is_installed() and not pkg:is_installing() then pkg:install() end
+    end
+  end)
+end
+
+-- Web development
+
+ensure_installed {
+  'tsc',
+  'vtsls',
+  'astro-language-server',
+  'eslint-lsp',
 }
 
 ---Whether the project uses TypeScript 7 or newer.
@@ -388,6 +413,45 @@ vim.lsp.config('vtsls', {
     end)
   end,
 })
+
+vim.lsp.enable('eslint')
+vim.lsp.enable('oxlint')
+
+-- Python
+
+ensure_installed {
+  'basedpyright',
+  'ruff',
+}
+
+conform.formatters_by_ft.python = { 'ruff_format' }
+
+-- Lua
+
+ensure_installed {
+  'lua-language-server',
+  'stylua',
+}
+
+conform.formatters_by_ft.lua = { 'stylua' }
+
+-- Rust
+
+ensure_installed {
+  'rust-analyzer',
+}
+
+vim.lsp.config('rust_analyzer', {
+  settings = {
+    ['rust-analyzer'] = {
+      check = { command = 'clippy' },
+    },
+  },
+})
+
+conform.formatters_by_ft.rust = { 'rustfmt' }
+
+-- Keymaps
 
 vim.api.nvim_create_autocmd('LspAttach', {
   callback = function(args)
