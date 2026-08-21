@@ -31,6 +31,19 @@ vim.o.undofile = true
 vim.o.splitbelow = true
 vim.o.splitright = true
 
+-- Check for edits made by external tools, such as coding agents.
+vim.o.autoread = true
+local checktime_timer = assert(vim.uv.new_timer())
+checktime_timer:start(1000, 1000, vim.schedule_wrap(function()
+  if vim.fn.mode() ~= 'c' then vim.cmd.checktime() end
+end))
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  callback = function()
+    checktime_timer:stop()
+    checktime_timer:close()
+  end,
+})
+
 -- Keep code on one line; prose file types use wrapping.
 vim.o.breakindent = true
 vim.o.wrap = false
