@@ -241,6 +241,12 @@ telescope.setup {
       },
     },
   },
+  pickers = {
+    find_files = {
+      hidden = true,
+      file_ignore_patterns = { '%.git/' },
+    },
+  },
 }
 
 telescope.load_extension('fzf')
