@@ -481,6 +481,16 @@ vim.lsp.config('rust_analyzer', {
 
 conform.formatters_by_ft.rust = { 'rustfmt' }
 
+-- C/C++
+
+ensure_installed {
+  'clangd',
+  'clang-format',
+}
+
+conform.formatters_by_ft.c = { 'clang-format' }
+conform.formatters_by_ft.cpp = { 'clang-format' }
+
 -- Keymaps
 
 vim.api.nvim_create_autocmd('LspAttach', {
